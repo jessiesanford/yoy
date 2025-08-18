@@ -1,6 +1,6 @@
 import './App.css'
-import Calendar from "./components/calendar/Calendar.tsx";
-import {CalendarProvider} from "./CalendarContext.tsx";
+import Calendar from "./components/main-calendar/Calendar.tsx";
+import {CalendarProvider} from "./context/CalendarContext.tsx";
 
 function App() {
 
