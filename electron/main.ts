@@ -1,6 +1,7 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -30,8 +31,11 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
-    minWidth: 600,  // minimum width
-    minHeight: 600, // minimum height
+    width: 1200,   // default width
+    height: 800,   // default height
+    minWidth: 900, // optional
+    minHeight: 600, // optional
+    // autoHideMenuBar: true
   })
 
   // Test active push message to Renderer-process.
@@ -46,6 +50,53 @@ function createWindow() {
     win.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
 }
+
+ipcMain.handle("pick-file", async () => {
+  if (win) {
+    const result = await dialog.showOpenDialog(win, {
+      filters: [{ name: "Calendar Files", extensions: ["ics"] }],
+      properties: ["openFile"]
+    });
+
+    if (result.canceled) return null;
+
+    const filePath = result.filePaths[0];
+    const data = fs.readFileSync(filePath, "utf-8");
+    return { filePath, data };
+  }
+});
+
+ipcMain.handle("import-calendar", async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ["openFile"],
+    filters: [{ name: "Calendar Files", extensions: ["ics"] }],
+  });
+
+  if (canceled || filePaths.length === 0) return null;
+
+  const filePath = filePaths[0];
+
+  // Ensure Calendars subdirectory exists
+  const calendarsDir = path.join(app.getPath("userData"), "Calendars");
+  if (!fs.existsSync(calendarsDir)) {
+    fs.mkdirSync(calendarsDir, { recursive: true });
+  }
+
+  // Save the file in Calendars directory
+  const destPath = path.join(calendarsDir, "calendar.ics");
+  fs.copyFileSync(filePath, destPath);
+
+  return destPath;
+});
+
+ipcMain.handle("read-file", (_e, filePath: string) => fs.readFileSync(filePath, "utf-8"));
+
+ipcMain.handle("read-all-ics", () => {
+  const calendarsDir = path.join(app.getPath("userData"), "Calendars");
+  if (!fs.existsSync(calendarsDir)) return [];
+  const files = fs.readdirSync(calendarsDir).filter((f) => f.endsWith(".ics"));
+  return files.map((f) => fs.readFileSync(path.join(calendarsDir, f), "utf-8"));
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

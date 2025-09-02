@@ -19,6 +19,10 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     return ipcRenderer.invoke(channel, ...omit)
   },
 
+  pickAndSaveICS: () => ipcRenderer.invoke("import-calendar"),
+  readFile: (filePath: string) => ipcRenderer.invoke("read-file", filePath),
+  readAllICSFiles: () => ipcRenderer.invoke("read-all-ics"),
+
   // You can expose other APTs you need here.
   // ...
 })

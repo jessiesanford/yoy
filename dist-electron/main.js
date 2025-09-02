@@ -1,6 +1,7 @@
-import { app, BrowserWindow } from "electron";
+import { ipcMain, dialog, app, BrowserWindow } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import fs from "fs";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
@@ -14,10 +15,15 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs")
     },
-    minWidth: 600,
-    // minimum width
+    width: 1200,
+    // default width
+    height: 800,
+    // default height
+    minWidth: 900,
+    // optional
     minHeight: 600
-    // minimum height
+    // optional
+    // autoHideMenuBar: true
   });
   win.webContents.on("did-finish-load", () => {
     win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
@@ -28,6 +34,40 @@ function createWindow() {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 }
+ipcMain.handle("pick-file", async () => {
+  if (win) {
+    const result = await dialog.showOpenDialog(win, {
+      filters: [{ name: "Calendar Files", extensions: ["ics"] }],
+      properties: ["openFile"]
+    });
+    if (result.canceled) return null;
+    const filePath = result.filePaths[0];
+    const data = fs.readFileSync(filePath, "utf-8");
+    return { filePath, data };
+  }
+});
+ipcMain.handle("import-calendar", async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ["openFile"],
+    filters: [{ name: "Calendar Files", extensions: ["ics"] }]
+  });
+  if (canceled || filePaths.length === 0) return null;
+  const filePath = filePaths[0];
+  const calendarsDir = path.join(app.getPath("userData"), "Calendars");
+  if (!fs.existsSync(calendarsDir)) {
+    fs.mkdirSync(calendarsDir, { recursive: true });
+  }
+  const destPath = path.join(calendarsDir, "calendar.ics");
+  fs.copyFileSync(filePath, destPath);
+  return destPath;
+});
+ipcMain.handle("read-file", (_e, filePath) => fs.readFileSync(filePath, "utf-8"));
+ipcMain.handle("read-all-ics", () => {
+  const calendarsDir = path.join(app.getPath("userData"), "Calendars");
+  if (!fs.existsSync(calendarsDir)) return [];
+  const files = fs.readdirSync(calendarsDir).filter((f) => f.endsWith(".ics"));
+  return files.map((f) => fs.readFileSync(path.join(calendarsDir, f), "utf-8"));
+});
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();

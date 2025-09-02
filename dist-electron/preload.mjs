@@ -16,7 +16,10 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
   invoke(...args) {
     const [channel, ...omit] = args;
     return electron.ipcRenderer.invoke(channel, ...omit);
-  }
+  },
+  pickAndSaveICS: () => electron.ipcRenderer.invoke("import-calendar"),
+  readFile: (filePath) => electron.ipcRenderer.invoke("read-file", filePath),
+  readAllICSFiles: () => electron.ipcRenderer.invoke("read-all-ics")
   // You can expose other APTs you need here.
   // ...
 });

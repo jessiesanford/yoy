@@ -3,15 +3,26 @@ import { addMonths, format, subMonths } from "date-fns";
 import { Button } from "../Button.tsx";
 import { AnimatePresence, motion } from "framer-motion";
 import { monthColors, monthIcons } from "../../calendarConstants.tsx";
+import { ListIcon } from "@phosphor-icons/react";
 
 export function CalendarMonthHeading() {
-  const { selectedMonth, setSelectedMonth } = useCalendar();
+  const {
+    selectedMonth,
+    setSelectedMonth,
+    sidebarCalendarOpen,
+    setSidebarCalendarOpen,
+    importCalendar
+  } = useCalendar();
   const monthName = format(selectedMonth, "MMMM");
   const monthColor = monthColors[monthName];
   const monthIcon = monthIcons[monthName];
 
+  const handleImportCalendar = async () => {
+    importCalendar();
+  };
+
   return (
-    <div className={"flex p-5 bg-gray-700 text-3xl select-none"}>
+    <div className={`flex p-5 bg-gray-700 text-3xl select-none`}>
 
       <div className="flex items-center gap-2">
         <div className="text-gray-500 border-r border-gray-500 pr-4 mr-4">
@@ -51,6 +62,17 @@ export function CalendarMonthHeading() {
         <Button
           onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}>
           ▶
+        </Button>
+        <Button
+          onClick={() => {
+            setSidebarCalendarOpen(!sidebarCalendarOpen);
+          }}>
+          <ListIcon size={20}/>
+        </Button>
+        <Button onClick={() => {
+          handleImportCalendar()
+        }}>
+          Import
         </Button>
       </div>
     </div>

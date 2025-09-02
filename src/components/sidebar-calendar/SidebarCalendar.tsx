@@ -3,7 +3,7 @@ import { SidebarMonth } from "./SidebarMonth.tsx";
 import { useEffect, useRef } from "react";
 
 export function SidebarCalendar() {
-  const { months, selectedMonth } = useCalendar();
+  const { months, selectedMonth, sidebarCalendarOpen } = useCalendar();
   const containerRef = useRef<HTMLDivElement>(null);
   const monthRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -21,7 +21,7 @@ export function SidebarCalendar() {
         if (!entry.isIntersecting) {
           el.scrollIntoView({
             behavior: "smooth",
-            block: "nearest",
+            block: "start",
           });
         }
       },
@@ -39,7 +39,7 @@ export function SidebarCalendar() {
   }, [selectedMonth]);
 
   return (
-    <div className="flex flex-col gap-2 bg-white min-w-[240px] shrink-0 h-screen overflow-auto" ref={containerRef}>
+    <div className={`flex flex-col gap-2 bg-white min-w-[240px] shrink-0 h-screen overflow-auto ${sidebarCalendarOpen ? '' : 'hidden'}`} ref={containerRef}>
       {months.map((month) => {
         const key = getKey(month);
         return (
