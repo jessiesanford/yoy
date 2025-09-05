@@ -13,6 +13,8 @@ interface CalendarContextType {
   holidays: HolidaysTypes.Holiday[];
   sidebarCalendarOpen: boolean,
   setSidebarCalendarOpen: Dispatch<SetStateAction<boolean>>;
+  settingsSidebarOpen: boolean,
+  setSettingsSidebarOpen: Dispatch<SetStateAction<boolean>>;
   events: CalendarEvent[];
   importCalendar: () => void;
 }
@@ -31,11 +33,11 @@ const CalendarContext = createContext<CalendarContextType | undefined>(undefined
 
 export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  // const months = Array.from({ length: 12 }, (_, i) => new Date(2025, i, 1));
   const [selectedYear, setSelectedYear] = useState(selectedMonth);
   const [months, setMonths] = useState(Array.from({ length: 12 }, (_, i) => new Date(selectedYear.getFullYear(), i, 1)));
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [sidebarCalendarOpen, setSidebarCalendarOpen] = useState(true);
+  const [settingsSidebarOpen, setSettingsSidebarOpen] = useState(true);
 
   useEffect(() => {
     // Load all existing calendars on start
@@ -83,6 +85,8 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     sidebarCalendarOpen,
     setSidebarCalendarOpen,
     importCalendar,
+    settingsSidebarOpen,
+    setSettingsSidebarOpen,
   }
 
   return (

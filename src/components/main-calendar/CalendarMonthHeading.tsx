@@ -9,17 +9,12 @@ export function CalendarMonthHeading() {
   const {
     selectedMonth,
     setSelectedMonth,
-    sidebarCalendarOpen,
-    setSidebarCalendarOpen,
-    importCalendar
+    settingsSidebarOpen,
+    setSettingsSidebarOpen
   } = useCalendar();
   const monthName = format(selectedMonth, "MMMM");
   const monthColor = monthColors[monthName];
   const monthIcon = monthIcons[monthName];
-
-  const handleImportCalendar = async () => {
-    importCalendar();
-  };
 
   return (
     <div className={`flex p-5 bg-gray-700 text-3xl select-none`}>
@@ -65,14 +60,9 @@ export function CalendarMonthHeading() {
         </Button>
         <Button
           onClick={() => {
-            setSidebarCalendarOpen(!sidebarCalendarOpen);
+            setSettingsSidebarOpen(!settingsSidebarOpen);
           }}>
           <ListIcon size={20}/>
-        </Button>
-        <Button onClick={() => {
-          handleImportCalendar()
-        }}>
-          Import
         </Button>
       </div>
     </div>
