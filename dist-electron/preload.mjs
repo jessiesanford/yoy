@@ -19,7 +19,11 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   },
   importCalendar: () => electron.ipcRenderer.invoke("import-calendar"),
   readFile: (filePath) => electron.ipcRenderer.invoke("read-file", filePath),
-  getCalendars: () => electron.ipcRenderer.invoke("get-calendars")
+  getCalendars: () => electron.ipcRenderer.invoke("get-calendars"),
+  getGoogleCalendars: () => electron.ipcRenderer.invoke("get-google-calendars"),
+  connectGoogleCalendar: (clientId, clientSecret) => electron.ipcRenderer.invoke("connect-google-calendar", clientId, clientSecret),
+  syncGoogleCalendar: () => electron.ipcRenderer.invoke("sync-google-calendar"),
+  removeGoogleCalendar: (calendarId) => electron.ipcRenderer.invoke("remove-google-calendar", calendarId)
   // You can expose other APTs you need here.
   // ...
 });

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, Dispatch, SetStateAction, useContext, useEffect, useState } from "react";
 import { addMonths, subMonths } from "date-fns";
 import Holidays, { HolidaysTypes } from "date-holidays";
@@ -21,12 +22,18 @@ interface CalendarContextType {
   addDayItem: (date: Date, text: string) => void;
   removeDayItem: (date: Date, itemId: string) => void;
   importCalendar: () => void;
+  connectGoogleCalendar: (clientId?: string, clientSecret?: string) => Promise<void>;
+  syncGoogleCalendar: () => Promise<void>;
+  removeCalendar: (calendar: Calendar) => Promise<void>;
+  googleSyncStatus: string | null;
 }
 
 export interface Calendar {
+  id: string;
   name: string;
   color: string;
   events: CalendarEvent[]
+  source: "ics" | "google";
 }
 
 export interface CalendarEvent {
@@ -72,6 +79,20 @@ function getRandomWord() {
 
 const CalendarContext = createContext<CalendarContextType | undefined>(undefined);
 
+function mapGoogleCalendars(calendars: GoogleCalendarPayload[]): Calendar[] {
+  return calendars.map((calendar) => ({
+    id: `google-${calendar.id}`,
+    name: calendar.name,
+    color: calendar.color,
+    source: "google",
+    events: calendar.events.map((event) => ({
+      ...event,
+      start: new Date(event.start),
+      end: new Date(event.end),
+    })),
+  }));
+}
+
 export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState(selectedMonth);
@@ -88,22 +109,34 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   });
   const [calendars, setCalendars] = useState<Calendar[]>([]);
+  const [googleSyncStatus, setGoogleSyncStatus] = useState<string | null>(null);
   const [sidebarCalendarOpen, setSidebarCalendarOpen] = useState(true);
   const [settingsSidebarOpen, setSettingsSidebarOpen] = useState(true);
 
   useEffect(() => {
-    // Load all existing calendars on start
-    window.electronAPI.invoke("get-calendars").then((allData: string[]) => {
-      const calendars = allData.map((data) => ({
+    window.electronAPI.getCalendars().then((allData) => {
+      const icsCalendars: Calendar[] = allData.map((data, index) => ({
+        id: `ics-${index}`,
         name: getRandomWord(),
         events: parseICS(data),
         color: getRandomColor(),
+        source: "ics",
       }));
-      setCalendars(calendars);
+      setCalendars((prev) => [
+        ...prev.filter((calendar) => calendar.source !== "ics"),
+        ...icsCalendars,
+      ]);
 
       const allEvents = allData.flatMap((data) => parseICS(data));
 
       setEvents(allEvents);
+    });
+
+    window.electronAPI.getGoogleCalendars().then((googleCalendars) => {
+      setCalendars((prev) => [
+        ...prev.filter((calendar) => calendar.source !== "google"),
+        ...mapGoogleCalendars(googleCalendars),
+      ]);
     });
   }, []);
 
@@ -130,6 +163,72 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const data = await (window as Window).electronAPI.readFile(savedPath); // We'll expose readFile in preload
     const parsedEvents = parseICS(data);
     setEvents((prev) => [...prev, ...parsedEvents]);
+    setCalendars((prev) => [
+      ...prev,
+      {
+        id: `ics-${crypto.randomUUID()}`,
+        name: getRandomWord(),
+        color: getRandomColor(),
+        events: parsedEvents,
+        source: "ics",
+      },
+    ]);
+  };
+
+  const connectGoogleCalendar = async (clientId?: string, clientSecret?: string) => {
+    const trimmedClientId = clientId?.trim();
+    if (!trimmedClientId) {
+      setGoogleSyncStatus("Paste a Google OAuth desktop client ID first.");
+      return;
+    }
+
+    setGoogleSyncStatus("Connecting to Google...");
+    try {
+      const googleCalendars = await window.electronAPI.connectGoogleCalendar(trimmedClientId, clientSecret?.trim());
+      setCalendars((prev) => [
+        ...prev.filter((calendar) => calendar.source !== "google"),
+        ...mapGoogleCalendars(googleCalendars),
+      ]);
+      setGoogleSyncStatus("Google Calendar synced.");
+    } catch (error) {
+      setGoogleSyncStatus(error instanceof Error ? error.message : "Google Calendar sync failed.");
+    }
+  };
+
+  const syncGoogleCalendar = async () => {
+    setGoogleSyncStatus("Syncing Google Calendar...");
+    try {
+      const googleCalendars = await window.electronAPI.syncGoogleCalendar();
+      setCalendars((prev) => [
+        ...prev.filter((calendar) => calendar.source !== "google"),
+        ...mapGoogleCalendars(googleCalendars),
+      ]);
+      setGoogleSyncStatus("Google Calendar synced.");
+    } catch (error) {
+      setGoogleSyncStatus(error instanceof Error ? error.message : "Google Calendar sync failed.");
+    }
+  };
+
+  const removeCalendar = async (calendar: Calendar) => {
+    if (calendar.source === "google") {
+      const googleCalendarId = calendar.id.replace(/^google-/, "");
+      setGoogleSyncStatus("Removing Google calendar...");
+
+      try {
+        const googleCalendars = await window.electronAPI.removeGoogleCalendar(googleCalendarId);
+        setCalendars((prev) => [
+          ...prev.filter((existingCalendar) => existingCalendar.source !== "google"),
+          ...mapGoogleCalendars(googleCalendars),
+        ]);
+        setGoogleSyncStatus("Google calendar removed.");
+      } catch (error) {
+        setGoogleSyncStatus(error instanceof Error ? error.message : "Google calendar removal failed.");
+      }
+
+      return;
+    }
+
+    setCalendars((prev) => prev.filter((existingCalendar) => existingCalendar.id !== calendar.id));
   };
 
   const holidays = new Holidays('CA');
@@ -161,7 +260,8 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setDayItems((prev) => {
       const items = (prev[key] ?? []).filter((item) => item.id !== itemId);
       if (items.length === 0) {
-        const { [key]: _removed, ...remaining } = prev;
+        const remaining = { ...prev };
+        delete remaining[key];
         return remaining;
       }
 
@@ -187,6 +287,10 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     sidebarCalendarOpen,
     setSidebarCalendarOpen,
     importCalendar,
+    connectGoogleCalendar,
+    syncGoogleCalendar,
+    removeCalendar,
+    googleSyncStatus,
     settingsSidebarOpen,
     setSettingsSidebarOpen,
   }

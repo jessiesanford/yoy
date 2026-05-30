@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@custom-variant tall {
+  @media (min-height: 800px) {
+    @slot;
+  }
+}
+
 #root {
   width: 100%;
   height: 100%;

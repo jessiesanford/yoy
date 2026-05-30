@@ -16,7 +16,7 @@ export function CalendarMonthHeading() {
   const monthIcon = monthIcons[monthName];
 
   return (
-    <div className={`flex p-5 bg-gray-700 text-3xl select-none`}>
+    <div className={`flex p-3 lg:p-5 bg-gray-700 text-xl lg:text-2xl select-none`}>
 
       <div className="flex items-center gap-2">
         <Button
