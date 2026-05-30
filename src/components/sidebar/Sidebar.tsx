@@ -16,9 +16,9 @@ export function Sidebar() {
     setSettingsSidebarOpen,
     sidebarCalendarOpen,
     setSidebarCalendarOpen,
-    importCalendar
+    importCalendar,
+    calendars,
   } = useCalendar();
-  const calendars = [{ name: "Jessie's Calendar" }];
 
   const handleImportCalendar = async () => {
     importCalendar();
@@ -40,7 +40,7 @@ export function Sidebar() {
             <ClickAwayListener onClickAway={() => setSettingsSidebarOpen(false)}>
               <Dialog.Content asChild aria-describedby={undefined}>
                 <motion.div
-                  className="bg-white p-6 pl-12 h-screen fixed top-0 left-[-30px] w-[400px] overflow-hidden"
+                  className="bg-white text-gray-900 p-6 pl-12 h-screen fixed top-0 left-[-30px] w-[400px] overflow-hidden"
                   initial={{ x: "-100%" }}
                   animate={{ x: 0 }}
                   exit={{ x: "-100%" }}
@@ -63,6 +63,7 @@ export function Sidebar() {
                           className="w-6 h-6 bg-blue-500 rounded-md flex items-center justify-center shadow-md hover:bg-blue-400 focus:outline-none transition-all"
                           checked={sidebarCalendarOpen}
                           onCheckedChange={(checked) => {
+                            // @ts-expect-error - this is being stupid
                             setSidebarCalendarOpen(checked)
                           }}
                           id="show-months-calendar"
@@ -83,10 +84,10 @@ export function Sidebar() {
 
                       {calendars.map((calendar) => {
                         return (
-                          <div className="flex items-center">
+                          <div className="flex items-center" key={calendar.name}>
                             <Checkbox.Root
                               className="w-6 h-6 bg-blue-500 rounded-md flex items-center justify-center shadow-md hover:bg-blue-400 focus:outline-none transition-all"
-                              id="c1"
+                              id={calendar.name}
                             >
                               <Checkbox.Indicator className="text-white">
                                 <CheckIcon weight={"bold"}/>
@@ -126,7 +127,7 @@ export function DD() {
         <Dialog.Portal>
           <Dialog.Overlay className={"bg-black/20 fixed inset-0"}/>
           <Dialog.Content className={cn(
-            "bg-white p-4 rounded-xl absolute top-1/2 left-1/2 translate transform -translate-x-1/2 -translate-y-1/2",
+            "bg-white text-gray-900 p-4 rounded-xl absolute top-1/2 left-1/2 translate transform -translate-x-1/2 -translate-y-1/2",
           )}>
             <Dialog.Title className="font-medium text-xl">Edit profile</Dialog.Title>
             <Dialog.Description className="text-gray-500">

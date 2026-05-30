@@ -51,22 +51,7 @@ function createWindow() {
   }
 }
 
-ipcMain.handle("pick-file", async () => {
-  if (win) {
-    const result = await dialog.showOpenDialog(win, {
-      filters: [{ name: "Calendar Files", extensions: ["ics"] }],
-      properties: ["openFile"]
-    });
-
-    if (result.canceled) return null;
-
-    const filePath = result.filePaths[0];
-    const data = fs.readFileSync(filePath, "utf-8");
-    return { filePath, data };
-  }
-});
-
-ipcMain.handle("import-calendar", async () => {
+ipcMain.handle('import-calendar', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ["openFile"],
     filters: [{ name: "Calendar Files", extensions: ["ics"] }],
@@ -87,15 +72,16 @@ ipcMain.handle("import-calendar", async () => {
   fs.copyFileSync(filePath, destPath);
 
   return destPath;
-});
+})
 
 ipcMain.handle("read-file", (_e, filePath: string) => fs.readFileSync(filePath, "utf-8"));
 
-ipcMain.handle("read-all-ics", () => {
-  const calendarsDir = path.join(app.getPath("userData"), "Calendars");
-  if (!fs.existsSync(calendarsDir)) return [];
-  const files = fs.readdirSync(calendarsDir).filter((f) => f.endsWith(".ics"));
-  return files.map((f) => fs.readFileSync(path.join(calendarsDir, f), "utf-8"));
+ipcMain.handle("get-calendars", () => {
+  // const calendarsDir = path.join(app.getPath("userData"), "Calendars");
+  // if (!fs.existsSync(calendarsDir)) return [];
+  // const files = fs.readdirSync(calendarsDir).filter((f) => f.endsWith(".ics"));
+  // return files.map((f) => fs.readFileSync(path.join(calendarsDir, f), "utf-8"));
+  return [];
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common

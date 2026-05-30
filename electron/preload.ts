@@ -1,7 +1,7 @@
 import { ipcRenderer, contextBridge } from 'electron'
 
 // --------- Expose some API to the Renderer process ---------
-contextBridge.exposeInMainWorld('ipcRenderer', {
+contextBridge.exposeInMainWorld('electronAPI', {
   on(...args: Parameters<typeof ipcRenderer.on>) {
     const [channel, listener] = args
     return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
@@ -19,9 +19,9 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     return ipcRenderer.invoke(channel, ...omit)
   },
 
-  pickAndSaveICS: () => ipcRenderer.invoke("import-calendar"),
+  importCalendar: () => ipcRenderer.invoke("import-calendar"),
   readFile: (filePath: string) => ipcRenderer.invoke("read-file", filePath),
-  readAllICSFiles: () => ipcRenderer.invoke("read-all-ics"),
+  getCalendars: () => ipcRenderer.invoke("get-calendars"),
 
   // You can expose other APTs you need here.
   // ...

@@ -1,6 +1,6 @@
 "use strict";
 const electron = require("electron");
-electron.contextBridge.exposeInMainWorld("ipcRenderer", {
+electron.contextBridge.exposeInMainWorld("electronAPI", {
   on(...args) {
     const [channel, listener] = args;
     return electron.ipcRenderer.on(channel, (event, ...args2) => listener(event, ...args2));
@@ -17,9 +17,9 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
     const [channel, ...omit] = args;
     return electron.ipcRenderer.invoke(channel, ...omit);
   },
-  pickAndSaveICS: () => electron.ipcRenderer.invoke("import-calendar"),
+  importCalendar: () => electron.ipcRenderer.invoke("import-calendar"),
   readFile: (filePath) => electron.ipcRenderer.invoke("read-file", filePath),
-  readAllICSFiles: () => electron.ipcRenderer.invoke("read-all-ics")
+  getCalendars: () => electron.ipcRenderer.invoke("get-calendars")
   // You can expose other APTs you need here.
   // ...
 });

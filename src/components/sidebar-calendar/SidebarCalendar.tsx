@@ -39,7 +39,7 @@ export function SidebarCalendar() {
   }, [selectedMonth]);
 
   return (
-    <div className={`flex flex-col gap-2 bg-white min-w-[240px] shrink-0 h-screen overflow-auto ${sidebarCalendarOpen ? '' : 'hidden'}`} ref={containerRef}>
+    <div className={`flex flex-col gap-2 bg-white text-gray-900 min-w-[240px] shrink-0 h-screen overflow-auto ${sidebarCalendarOpen ? '' : 'hidden'}`} ref={containerRef}>
       {months.map((month) => {
         const key = getKey(month);
         return (

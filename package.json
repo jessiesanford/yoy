@@ -1,5 +1,9 @@
 {
-  "name": "year-over-year",
+  "name": "true-calendar",
+  "author": "Jessie Slobogian-Sanford",
+  "displayName": "True Calendar",
+  "productName": "True Calendar",
+  "executableName": "true-calendar-setup",
   "private": true,
   "version": "0.0.0",
   "type": "module",

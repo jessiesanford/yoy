@@ -31,7 +31,7 @@ export function SidebarMonth({ month }: { month: Date }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-0 flex-grow">
+      <div className="grid grid-cols-7 gap-0 flex-grow mt-0.5">
         {days.map((day, index) =>
           <SidebarMonthDay key={index} day={day} month={month}/>
         )}

@@ -34,18 +34,6 @@ function createWindow() {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 }
-ipcMain.handle("pick-file", async () => {
-  if (win) {
-    const result = await dialog.showOpenDialog(win, {
-      filters: [{ name: "Calendar Files", extensions: ["ics"] }],
-      properties: ["openFile"]
-    });
-    if (result.canceled) return null;
-    const filePath = result.filePaths[0];
-    const data = fs.readFileSync(filePath, "utf-8");
-    return { filePath, data };
-  }
-});
 ipcMain.handle("import-calendar", async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ["openFile"],
@@ -62,11 +50,8 @@ ipcMain.handle("import-calendar", async () => {
   return destPath;
 });
 ipcMain.handle("read-file", (_e, filePath) => fs.readFileSync(filePath, "utf-8"));
-ipcMain.handle("read-all-ics", () => {
-  const calendarsDir = path.join(app.getPath("userData"), "Calendars");
-  if (!fs.existsSync(calendarsDir)) return [];
-  const files = fs.readdirSync(calendarsDir).filter((f) => f.endsWith(".ics"));
-  return files.map((f) => fs.readFileSync(path.join(calendarsDir, f), "utf-8"));
+ipcMain.handle("get-calendars", () => {
+  return [];
 });
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
