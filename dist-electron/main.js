@@ -1,312 +1,258 @@
-import { ipcMain, dialog, app, BrowserWindow, shell } from "electron";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-import fs from "fs";
-import http from "node:http";
-import crypto from "node:crypto";
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-process.env.APP_ROOT = path.join(__dirname, "..");
-const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
-const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-let win;
-const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
-const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
-const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-const GOOGLE_CALENDAR_API_URL = "https://www.googleapis.com/calendar/v3";
-function getGoogleStatePath() {
-  return path.join(app.getPath("userData"), "google-calendar-state.json");
+import { ipcMain as w, dialog as U, app as g, BrowserWindow as P, shell as N } from "electron";
+import { fileURLToPath as j } from "node:url";
+import d from "node:path";
+import f from "fs";
+import $ from "node:http";
+import E from "node:crypto";
+const S = d.dirname(j(import.meta.url));
+process.env.APP_ROOT = d.join(S, "..");
+const T = process.env.VITE_DEV_SERVER_URL, ae = d.join(process.env.APP_ROOT, "dist-electron"), C = d.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = T ? d.join(process.env.APP_ROOT, "public") : C;
+let p;
+const b = "https://www.googleapis.com/auth/calendar.readonly", F = "https://accounts.google.com/o/oauth2/v2/auth", V = "https://oauth2.googleapis.com/token", O = "https://www.googleapis.com/calendar/v3", B = "520031747953-922v578d1uivhssjqhatdgf2jaf2m05v.apps.googleusercontent.com", R = [
+  "GOOGLE_CALENDAR_CLIENT_SECRET",
+  "GOOGLE_CLIENT_SECRET",
+  "TRUE_CALENDAR_GOOGLE_CLIENT_SECRET"
+];
+function G() {
+  return d.join(g.getPath("userData"), "google-calendar-state.json");
 }
-function readGoogleState() {
-  const statePath = getGoogleStatePath();
-  if (!fs.existsSync(statePath)) return {};
+function _() {
+  const e = G();
+  if (!f.existsSync(e)) return {};
   try {
-    return JSON.parse(fs.readFileSync(statePath, "utf-8"));
+    return JSON.parse(f.readFileSync(e, "utf-8"));
   } catch {
     return {};
   }
 }
-function writeGoogleState(state) {
-  fs.writeFileSync(getGoogleStatePath(), JSON.stringify(state, null, 2), "utf-8");
+function y(e) {
+  f.writeFileSync(G(), JSON.stringify(e, null, 2), "utf-8");
 }
-function base64Url(buffer) {
-  return buffer.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+function W(e) {
+  return f.existsSync(e) ? f.readFileSync(e, "utf-8").split(/\r?\n/).reduce((t, n) => {
+    const o = n.trim();
+    if (!o || o.startsWith("#")) return t;
+    const r = o.indexOf("=");
+    if (r === -1) return t;
+    const a = o.slice(0, r).trim(), i = o.slice(r + 1).trim();
+    return t[a] = i.replace(/^['"]|['"]$/g, ""), t;
+  }, {}) : {};
 }
-function createCodeVerifier() {
-  return base64Url(crypto.randomBytes(32));
+function q(e) {
+  const t = [
+    ".env.dev",
+    ".env.development",
+    ".env.local",
+    ".env"
+  ].map((n) => d.join(process.env.APP_ROOT, n));
+  for (const n of e)
+    if (process.env[n]) return process.env[n];
+  for (const n of t) {
+    const o = W(n);
+    for (const r of e)
+      if (o[r]) return o[r];
+  }
 }
-function createCodeChallenge(verifier) {
-  return base64Url(crypto.createHash("sha256").update(verifier).digest());
+function L() {
+  return q(R);
 }
-async function createOAuthCallback(expectedState) {
-  let server;
-  const codePromise = new Promise((resolve, reject) => {
-    server = http.createServer((req, res) => {
-      const host = req.headers.host;
-      if (!host || !req.url) return;
-      const url = new URL(req.url, `http://${host}`);
-      const code = url.searchParams.get("code");
-      const state = url.searchParams.get("state");
-      const error = url.searchParams.get("error");
-      res.writeHead(error ? 400 : 200, { "Content-Type": "text/html" });
-      res.end(error ? "<h1>Google Calendar connection failed.</h1><p>You can close this window.</p>" : "<h1>Google Calendar connected.</h1><p>You can close this window and return to True Calendar.</p>");
-      server == null ? void 0 : server.close();
-      if (error) {
-        reject(new Error(error));
+function k(e) {
+  return e.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+function M() {
+  return k(E.randomBytes(32));
+}
+function H(e) {
+  return k(E.createHash("sha256").update(e).digest());
+}
+async function J(e) {
+  let t;
+  const n = new Promise((r, a) => {
+    t = $.createServer((i, l) => {
+      const s = i.headers.host;
+      if (!s || !i.url) return;
+      const c = new URL(i.url, `http://${s}`), u = c.searchParams.get("code"), h = c.searchParams.get("state"), m = c.searchParams.get("error");
+      if (l.writeHead(m ? 400 : 200, { "Content-Type": "text/html" }), l.end(m ? "<h1>Google Calendar connection failed.</h1><p>You can close this window.</p>" : "<h1>Google Calendar connected.</h1><p>You can close this window and return to True Calendar.</p>"), t == null || t.close(), m) {
+        a(new Error(m));
         return;
       }
-      if (!code || state !== expectedState) {
-        reject(new Error("Invalid OAuth response from Google."));
+      if (!u || h !== e) {
+        a(new Error("Invalid OAuth response from Google."));
         return;
       }
-      resolve(code);
+      r(u);
+    }), t.listen(0, "127.0.0.1"), t.on("error", a);
+  }), o = await new Promise((r, a) => {
+    t == null || t.on("error", a), t == null || t.on("listening", () => {
+      const i = t == null ? void 0 : t.address();
+      if (!i || typeof i == "string") {
+        t == null || t.close(), a(new Error("Unable to start OAuth callback server."));
+        return;
+      }
+      r(`http://127.0.0.1:${i.port}/`);
     });
-    server.listen(0, "127.0.0.1");
-    server.on("error", reject);
   });
-  const redirectUri = await new Promise((resolve, reject) => {
-    server == null ? void 0 : server.on("error", reject);
-    server == null ? void 0 : server.on("listening", () => {
-      const address = server == null ? void 0 : server.address();
-      if (!address || typeof address === "string") {
-        server == null ? void 0 : server.close();
-        reject(new Error("Unable to start OAuth callback server."));
-        return;
-      }
-      resolve(`http://127.0.0.1:${address.port}/`);
-    });
-  });
-  return { codePromise, redirectUri };
+  return { codePromise: n, redirectUri: o };
 }
-async function requestGoogleToken(params) {
-  const response = await fetch(GOOGLE_TOKEN_URL, {
+async function A(e) {
+  const t = await fetch(V, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params
-  });
-  const responseText = await response.text();
-  if (!response.ok) {
+    body: e
+  }), n = await t.text();
+  if (!t.ok)
     try {
-      const errorData = JSON.parse(responseText);
-      const errorMessage = [errorData.error, errorData.error_description].filter(Boolean).join(": ");
-      throw new Error(`Google token request failed: ${response.status}${errorMessage ? ` - ${errorMessage}` : ""}`);
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new Error(`Google token request failed: ${response.status}${responseText ? ` - ${responseText}` : ""}`);
-      }
-      throw error;
+      const o = JSON.parse(n), r = [o.error, o.error_description].filter(Boolean).join(": ");
+      throw new Error(`Google token request failed: ${t.status}${r ? ` - ${r}` : ""}`);
+    } catch (o) {
+      throw o instanceof SyntaxError ? new Error(`Google token request failed: ${t.status}${n ? ` - ${n}` : ""}`) : o;
     }
-  }
-  return JSON.parse(responseText);
+  return JSON.parse(n);
 }
-async function connectGoogleCalendar(clientId, clientSecret) {
-  const state = readGoogleState();
-  const configuredClientId = (clientId == null ? void 0 : clientId.trim()) || state.clientId;
-  const configuredClientSecret = (clientSecret == null ? void 0 : clientSecret.trim()) || state.clientSecret;
-  if (!configuredClientId) {
-    throw new Error("Google Calendar OAuth client ID is required.");
-  }
-  const verifier = createCodeVerifier();
-  const challenge = createCodeChallenge(verifier);
-  const requestState = base64Url(crypto.randomBytes(16));
-  const { codePromise, redirectUri } = await createOAuthCallback(requestState);
-  const authUrl = new URL(GOOGLE_AUTH_URL);
-  authUrl.searchParams.set("client_id", configuredClientId);
-  authUrl.searchParams.set("redirect_uri", redirectUri);
-  authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("scope", GOOGLE_CALENDAR_SCOPE);
-  authUrl.searchParams.set("access_type", "offline");
-  authUrl.searchParams.set("prompt", "consent");
-  authUrl.searchParams.set("code_challenge", challenge);
-  authUrl.searchParams.set("code_challenge_method", "S256");
-  authUrl.searchParams.set("state", requestState);
-  await shell.openExternal(authUrl.toString());
-  const code = await codePromise;
-  const tokenParams = new URLSearchParams({
-    client_id: configuredClientId,
-    code,
-    code_verifier: verifier,
+async function z() {
+  const e = _(), t = B, n = L() || e.clientSecret;
+  if (!n)
+    throw new Error(`Google Calendar OAuth client secret is missing. Add it to .env.dev as ${R[0]}.`);
+  const o = M(), r = H(o), a = k(E.randomBytes(16)), { codePromise: i, redirectUri: l } = await J(a), s = new URL(F);
+  s.searchParams.set("client_id", t), s.searchParams.set("redirect_uri", l), s.searchParams.set("response_type", "code"), s.searchParams.set("scope", b), s.searchParams.set("access_type", "offline"), s.searchParams.set("prompt", "consent"), s.searchParams.set("code_challenge", r), s.searchParams.set("code_challenge_method", "S256"), s.searchParams.set("state", a), await N.openExternal(s.toString());
+  const c = await i, u = new URLSearchParams({
+    client_id: t,
+    code: c,
+    code_verifier: o,
     grant_type: "authorization_code",
-    redirect_uri: redirectUri
+    redirect_uri: l
   });
-  if (configuredClientSecret) {
-    tokenParams.set("client_secret", configuredClientSecret);
-  }
-  const tokenResponse = await requestGoogleToken(tokenParams);
-  writeGoogleState({
-    ...state,
-    clientId: configuredClientId,
-    clientSecret: configuredClientSecret,
+  n && u.set("client_secret", n);
+  const h = await A(u);
+  return y({
+    ...e,
+    clientId: t,
+    clientSecret: n,
     tokens: {
-      accessToken: tokenResponse.access_token,
-      refreshToken: tokenResponse.refresh_token,
-      expiresAt: Date.now() + tokenResponse.expires_in * 1e3
+      accessToken: h.access_token,
+      refreshToken: h.refresh_token,
+      expiresAt: Date.now() + h.expires_in * 1e3
     },
     syncTokens: {},
     hiddenCalendarIds: []
-  });
-  return syncGoogleCalendars();
+  }), x();
 }
-async function getValidGoogleAccessToken() {
-  const state = readGoogleState();
-  if (!state.clientId || !state.tokens) {
+async function Y() {
+  const e = _();
+  if (!e.clientId || !e.tokens)
     throw new Error("Google Calendar is not connected.");
-  }
-  if (state.tokens.expiresAt > Date.now() + 6e4) {
-    return state.tokens.accessToken;
-  }
-  if (!state.tokens.refreshToken) {
+  const t = L() || e.clientSecret;
+  if (e.tokens.expiresAt > Date.now() + 6e4)
+    return e.tokens.accessToken;
+  if (!e.tokens.refreshToken)
     throw new Error("Google Calendar needs to be reconnected.");
-  }
-  const tokenParams = new URLSearchParams({
-    client_id: state.clientId,
-    refresh_token: state.tokens.refreshToken,
+  const n = new URLSearchParams({
+    client_id: e.clientId,
+    refresh_token: e.tokens.refreshToken,
     grant_type: "refresh_token"
   });
-  if (state.clientSecret) {
-    tokenParams.set("client_secret", state.clientSecret);
-  }
-  const tokenResponse = await requestGoogleToken(tokenParams);
-  const nextState = {
-    ...state,
+  t && n.set("client_secret", t);
+  const o = await A(n), r = {
+    ...e,
     tokens: {
-      accessToken: tokenResponse.access_token,
-      refreshToken: tokenResponse.refresh_token || state.tokens.refreshToken,
-      expiresAt: Date.now() + tokenResponse.expires_in * 1e3
+      accessToken: o.access_token,
+      refreshToken: o.refresh_token || e.tokens.refreshToken,
+      expiresAt: Date.now() + o.expires_in * 1e3
     }
   };
-  writeGoogleState(nextState);
-  return nextState.tokens.accessToken;
+  return y(r), r.tokens.accessToken;
 }
-async function googleApiGet(accessToken, url) {
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` }
+async function v(e, t) {
+  const n = await fetch(t, {
+    headers: { Authorization: `Bearer ${e}` }
   });
-  if (!response.ok) {
-    throw new Error(`Google Calendar API request failed: ${response.status}`);
-  }
-  return await response.json();
+  if (!n.ok)
+    throw new Error(`Google Calendar API request failed: ${n.status}`);
+  return await n.json();
 }
-function normalizeGoogleEvent(event) {
-  var _a, _b, _c, _d, _e;
-  const start = ((_a = event.start) == null ? void 0 : _a.dateTime) || ((_b = event.start) == null ? void 0 : _b.date);
-  const end = ((_c = event.end) == null ? void 0 : _c.dateTime) || ((_d = event.end) == null ? void 0 : _d.date);
-  if (!start || !end || event.status === "cancelled") return null;
-  return {
-    id: event.id || event.iCalUID || crypto.randomUUID(),
-    title: event.summary || "(No title)",
-    description: event.description,
-    location: event.location,
-    start,
-    end,
-    allDay: Boolean((_e = event.start) == null ? void 0 : _e.date)
+function K(e) {
+  var o, r, a, i, l;
+  const t = ((o = e.start) == null ? void 0 : o.dateTime) || ((r = e.start) == null ? void 0 : r.date), n = ((a = e.end) == null ? void 0 : a.dateTime) || ((i = e.end) == null ? void 0 : i.date);
+  return !t || !n || e.status === "cancelled" ? null : {
+    id: e.id || e.iCalUID || E.randomUUID(),
+    title: e.summary || "(No title)",
+    description: e.description,
+    location: e.location,
+    start: t,
+    end: n,
+    allDay: !!((l = e.start) != null && l.date)
   };
 }
-async function fetchCalendarEvents(accessToken, calendarId, syncToken) {
-  const events = [];
-  const deletedEventIds = [];
-  let nextPageToken;
-  let nextSyncToken;
-  let useSyncToken = syncToken;
+async function Q(e, t, n) {
+  const o = [], r = [];
+  let a, i, l = n;
   do {
-    const url = new URL(`${GOOGLE_CALENDAR_API_URL}/calendars/${encodeURIComponent(calendarId)}/events`);
-    url.searchParams.set("maxResults", "2500");
-    url.searchParams.set("showDeleted", "true");
-    url.searchParams.set("singleEvents", "true");
-    if (nextPageToken) {
-      url.searchParams.set("pageToken", nextPageToken);
-    }
-    if (useSyncToken) {
-      url.searchParams.set("syncToken", useSyncToken);
-    }
+    const s = new URL(`${O}/calendars/${encodeURIComponent(t)}/events`);
+    s.searchParams.set("maxResults", "2500"), s.searchParams.set("showDeleted", "true"), s.searchParams.set("singleEvents", "true"), a && s.searchParams.set("pageToken", a), l && s.searchParams.set("syncToken", l);
     try {
-      const data = await googleApiGet(accessToken, url);
-      for (const item of data.items ?? []) {
-        if (item.status === "cancelled" && item.id) {
-          deletedEventIds.push(item.id);
+      const c = await v(e, s);
+      for (const u of c.items ?? []) {
+        if (u.status === "cancelled" && u.id) {
+          r.push(u.id);
           continue;
         }
-        const event = normalizeGoogleEvent(item);
-        if (event) {
-          events.push(event);
-        }
+        const h = K(u);
+        h && o.push(h);
       }
-      nextPageToken = data.nextPageToken;
-      nextSyncToken = data.nextSyncToken;
-    } catch (error) {
-      if (useSyncToken && error instanceof Error && error.message.includes("410")) {
-        useSyncToken = void 0;
-        nextPageToken = void 0;
-        events.length = 0;
+      a = c.nextPageToken, i = c.nextSyncToken;
+    } catch (c) {
+      if (l && c instanceof Error && c.message.includes("410")) {
+        l = void 0, a = void 0, o.length = 0;
         continue;
       }
-      throw error;
+      throw c;
     }
-  } while (nextPageToken);
-  return { events, deletedEventIds, nextSyncToken };
+  } while (a);
+  return { events: o, deletedEventIds: r, nextSyncToken: i };
 }
-async function syncGoogleCalendars() {
-  const accessToken = await getValidGoogleAccessToken();
-  const state = readGoogleState();
-  const calendarListUrl = new URL(`${GOOGLE_CALENDAR_API_URL}/users/me/calendarList`);
-  const calendarList = await googleApiGet(accessToken, calendarListUrl);
-  const existingCalendars = new Map((state.calendars ?? []).map((calendar) => [calendar.id, calendar]));
-  const nextSyncTokens = { ...state.syncTokens ?? {} };
-  const hiddenCalendarIds = new Set(state.hiddenCalendarIds ?? []);
-  const calendars = [];
-  for (const item of calendarList.items ?? []) {
-    if (!item.id || item.deleted) continue;
-    if (hiddenCalendarIds.has(item.id)) continue;
-    const previousCalendar = existingCalendars.get(item.id);
-    const { events, deletedEventIds, nextSyncToken } = await fetchCalendarEvents(accessToken, item.id, nextSyncTokens[item.id]);
-    const nextEvents = nextSyncTokens[item.id] && previousCalendar ? mergeGoogleEvents(previousCalendar.events, events, deletedEventIds) : events;
-    if (nextSyncToken) {
-      nextSyncTokens[item.id] = nextSyncToken;
-    }
-    calendars.push({
-      id: item.id,
-      name: item.summary || item.id,
-      color: item.backgroundColor || (previousCalendar == null ? void 0 : previousCalendar.color) || "#2563eb",
-      events: nextEvents
+async function x() {
+  const e = await Y(), t = _(), n = new URL(`${O}/users/me/calendarList`), o = await v(e, n), r = new Map((t.calendars ?? []).map((s) => [s.id, s])), a = { ...t.syncTokens ?? {} }, i = new Set(t.hiddenCalendarIds ?? []), l = [];
+  for (const s of o.items ?? []) {
+    if (!s.id || s.deleted || i.has(s.id)) continue;
+    const c = r.get(s.id), { events: u, deletedEventIds: h, nextSyncToken: m } = await Q(e, s.id, a[s.id]), D = a[s.id] && c ? X(c.events, u, h) : u;
+    m && (a[s.id] = m), l.push({
+      id: s.id,
+      name: s.summary || s.id,
+      color: s.backgroundColor || (c == null ? void 0 : c.color) || "#2563eb",
+      textColor: s.foregroundColor || (c == null ? void 0 : c.textColor),
+      events: D
     });
   }
-  writeGoogleState({
-    ...state,
-    syncTokens: nextSyncTokens,
-    calendars
-  });
-  return calendars;
+  return y({
+    ...t,
+    syncTokens: a,
+    calendars: l
+  }), l;
 }
-function mergeGoogleEvents(previousEvents, changedEvents, deletedEventIds) {
-  const eventsById = new Map(previousEvents.map((event) => [event.id, event]));
-  for (const eventId of deletedEventIds) {
-    eventsById.delete(eventId);
-  }
-  for (const event of changedEvents) {
-    eventsById.set(event.id, event);
-  }
-  return Array.from(eventsById.values());
+function X(e, t, n) {
+  const o = new Map(e.map((r) => [r.id, r]));
+  for (const r of n)
+    o.delete(r);
+  for (const r of t)
+    o.set(r.id, r);
+  return Array.from(o.values());
 }
-function removeGoogleCalendar(calendarId) {
-  const state = readGoogleState();
-  const hiddenCalendarIds = Array.from(/* @__PURE__ */ new Set([...state.hiddenCalendarIds ?? [], calendarId]));
-  const calendars = (state.calendars ?? []).filter((calendar) => calendar.id !== calendarId);
-  const syncTokens = { ...state.syncTokens ?? {} };
-  delete syncTokens[calendarId];
-  writeGoogleState({
-    ...state,
-    hiddenCalendarIds,
-    syncTokens,
-    calendars
-  });
-  return calendars;
+function Z(e) {
+  const t = _(), n = Array.from(/* @__PURE__ */ new Set([...t.hiddenCalendarIds ?? [], e])), o = (t.calendars ?? []).filter((a) => a.id !== e), r = { ...t.syncTokens ?? {} };
+  return delete r[e], y({
+    ...t,
+    hiddenCalendarIds: n,
+    syncTokens: r,
+    calendars: o
+  }), o;
 }
-function createWindow() {
-  win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+function I() {
+  p = new P({
+    title: "True Calendar",
+    icon: d.join(process.env.APP_ROOT, "build", "icon.png"),
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs")
+      preload: d.join(S, "preload.mjs")
     },
     width: 1200,
     // default width
@@ -317,56 +263,39 @@ function createWindow() {
     minHeight: 700
     // optional
     // autoHideMenuBar: true
-  });
-  win.webContents.on("did-finish-load", () => {
-    win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-  });
-  if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL);
-  } else {
-    win.loadFile(path.join(RENDERER_DIST, "index.html"));
-  }
+  }), p.webContents.on("did-finish-load", () => {
+    p == null || p.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+  }), T ? p.loadURL(T) : p.loadFile(d.join(C, "index.html"));
 }
-ipcMain.handle("import-calendar", async () => {
-  const { canceled, filePaths } = await dialog.showOpenDialog({
+w.handle("import-calendar", async () => {
+  const { canceled: e, filePaths: t } = await U.showOpenDialog({
     properties: ["openFile"],
     filters: [{ name: "Calendar Files", extensions: ["ics"] }]
   });
-  if (canceled || filePaths.length === 0) return null;
-  const filePath = filePaths[0];
-  const calendarsDir = path.join(app.getPath("userData"), "Calendars");
-  if (!fs.existsSync(calendarsDir)) {
-    fs.mkdirSync(calendarsDir, { recursive: true });
-  }
-  const destPath = path.join(calendarsDir, "calendar.ics");
-  fs.copyFileSync(filePath, destPath);
-  return destPath;
+  if (e || t.length === 0) return null;
+  const n = t[0], o = d.join(g.getPath("userData"), "Calendars");
+  f.existsSync(o) || f.mkdirSync(o, { recursive: !0 });
+  const r = d.join(o, "calendar.ics");
+  return f.copyFileSync(n, r), r;
 });
-ipcMain.handle("read-file", (_e, filePath) => fs.readFileSync(filePath, "utf-8"));
-ipcMain.handle("get-calendars", () => {
-  const calendarsDir = path.join(app.getPath("userData"), "Calendars");
-  if (!fs.existsSync(calendarsDir)) return [];
-  const files = fs.readdirSync(calendarsDir).filter((f) => f.endsWith(".ics"));
-  return files.map((f) => fs.readFileSync(path.join(calendarsDir, f), "utf-8"));
+w.handle("read-file", (e, t) => f.readFileSync(t, "utf-8"));
+w.handle("get-calendars", () => {
+  const e = d.join(g.getPath("userData"), "Calendars");
+  return f.existsSync(e) ? f.readdirSync(e).filter((n) => n.endsWith(".ics")).map((n) => f.readFileSync(d.join(e, n), "utf-8")) : [];
 });
-ipcMain.handle("get-google-calendars", () => readGoogleState().calendars ?? []);
-ipcMain.handle("connect-google-calendar", (_event, clientId, clientSecret) => connectGoogleCalendar(clientId, clientSecret));
-ipcMain.handle("sync-google-calendar", () => syncGoogleCalendars());
-ipcMain.handle("remove-google-calendar", (_event, calendarId) => removeGoogleCalendar(calendarId));
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-    win = null;
-  }
+w.handle("get-google-calendars", () => _().calendars ?? []);
+w.handle("connect-google-calendar", () => z());
+w.handle("sync-google-calendar", () => x());
+w.handle("remove-google-calendar", (e, t) => Z(t));
+g.on("window-all-closed", () => {
+  process.platform !== "darwin" && (g.quit(), p = null);
 });
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+g.on("activate", () => {
+  P.getAllWindows().length === 0 && I();
 });
-app.whenReady().then(createWindow);
+g.whenReady().then(I);
 export {
-  MAIN_DIST,
-  RENDERER_DIST,
-  VITE_DEV_SERVER_URL
+  ae as MAIN_DIST,
+  C as RENDERER_DIST,
+  T as VITE_DEV_SERVER_URL
 };

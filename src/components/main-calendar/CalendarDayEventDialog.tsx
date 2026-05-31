@@ -8,6 +8,8 @@ export interface CalendarDayEntry {
   id: string;
   itemId?: string;
   text: string;
+  timeText?: string;
+  location?: string;
   className: string;
   style?: CSSProperties;
 }
@@ -82,7 +84,14 @@ export function CalendarDayEventDialog({ day, entries, children }: CalendarDayEv
                   className={`${entry.className} flex items-center gap-2 rounded px-3 py-2 text-sm`}
                   style={entry.style}
                 >
-                  <div className="min-w-0 flex-1 break-words">{entry.text}</div>
+                  <div className="min-w-0 flex-1 break-words">
+                    <div>{entry.text}</div>
+                    {(entry.timeText || entry.location) && (
+                      <div className="mt-0.5 text-xs opacity-75">
+                        {[entry.timeText, entry.location].filter(Boolean).join(" | ")}
+                      </div>
+                    )}
+                  </div>
                   {entry.itemId && (
                     <button
                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-emerald-700 transition hover:bg-emerald-100"

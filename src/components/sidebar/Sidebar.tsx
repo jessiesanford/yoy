@@ -10,11 +10,8 @@ import { useCalendar } from "../../context/CalendarContext.tsx";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClickAwayListener } from "../ClickAwayListener.tsx";
 import { Button } from "../Button.tsx";
-import { useState } from "react";
 
 export function Sidebar() {
-  const [googleClientId, setGoogleClientId] = useState("");
-  const [googleClientSecret, setGoogleClientSecret] = useState("");
   const {
     settingsSidebarOpen,
     setSettingsSidebarOpen,
@@ -24,6 +21,8 @@ export function Sidebar() {
     connectGoogleCalendar,
     syncGoogleCalendar,
     removeCalendar,
+    visibleCalendarIds,
+    setCalendarVisibility,
     googleSyncStatus,
     calendars,
   } = useCalendar();
@@ -57,7 +56,7 @@ export function Sidebar() {
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 >
                   <div className="flex items-center mb-10">
-                    <Dialog.Title className="font-medium text-xl">My Calendar</Dialog.Title>
+                    <Dialog.Title className="font-medium text-xl">True Calendar</Dialog.Title>
                     <button className="ml-auto cursor-pointer" aria-label="Close" onClick={() => {
                       setSettingsSidebarOpen(false)
                     }}>
@@ -105,6 +104,10 @@ export function Sidebar() {
                                 "items-center justify-center shadow-sm",
                                 "hover:border-gray-400 focus:outline-none transition-all"
                               )}
+                              checked={visibleCalendarIds.includes(calendar.id)}
+                              onCheckedChange={(checked) => {
+                                setCalendarVisibility(calendar.id, checked === true)
+                              }}
                               id={calendar.name}
                             >
                               <Checkbox.Indicator className="text-black">
@@ -133,21 +136,8 @@ export function Sidebar() {
                       </Button>
 
                       <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
-                        <input
-                          className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                          value={googleClientId}
-                          onChange={(event) => setGoogleClientId(event.target.value)}
-                          placeholder="Google OAuth desktop client ID"
-                        />
-                        <input
-                          className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                          value={googleClientSecret}
-                          onChange={(event) => setGoogleClientSecret(event.target.value)}
-                          placeholder="Google OAuth client secret"
-                          type="password"
-                        />
                         <Button className="w-40 m-auto" onClick={() => {
-                          connectGoogleCalendar(googleClientId, googleClientSecret)
+                          connectGoogleCalendar()
                         }}>
                           Connect Google
                         </Button>

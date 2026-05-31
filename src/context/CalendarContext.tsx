@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, Dispatch, SetStateAction, useContext, useEffect, useState } from "react";
+import React, { createContext, Dispatch, SetStateAction, useContext, useEffect, useMemo, useState } from "react";
 import { addMonths, subMonths } from "date-fns";
 import Holidays, { HolidaysTypes } from "date-holidays";
 import { parseICS } from "../utils/parseICS.ts";
@@ -18,13 +18,16 @@ interface CalendarContextType {
   settingsSidebarOpen: boolean,
   setSettingsSidebarOpen: Dispatch<SetStateAction<boolean>>;
   events: CalendarEvent[];
+  calendarEventsByDate: Record<string, CalendarEventWithColor[]>;
   dayItems: Record<string, DayItem[]>;
   addDayItem: (date: Date, text: string) => void;
   removeDayItem: (date: Date, itemId: string) => void;
   importCalendar: () => void;
-  connectGoogleCalendar: (clientId?: string, clientSecret?: string) => Promise<void>;
+  connectGoogleCalendar: () => Promise<void>;
   syncGoogleCalendar: () => Promise<void>;
   removeCalendar: (calendar: Calendar) => Promise<void>;
+  visibleCalendarIds: string[];
+  setCalendarVisibility: (calendarId: string, visible: boolean) => void;
   googleSyncStatus: string | null;
 }
 
@@ -32,6 +35,7 @@ export interface Calendar {
   id: string;
   name: string;
   color: string;
+  textColor?: string;
   events: CalendarEvent[]
   source: "ics" | "google";
 }
@@ -46,6 +50,11 @@ export interface CalendarEvent {
   allDay: boolean;
 }
 
+export interface CalendarEventWithColor extends CalendarEvent {
+  color: string;
+  textColor?: string;
+}
+
 export interface DayItem {
   id: string;
   text: string;
@@ -53,6 +62,7 @@ export interface DayItem {
 }
 
 const DAY_ITEMS_STORAGE_KEY = "true-calendar-day-items";
+const VISIBLE_CALENDARS_STORAGE_KEY = "true-calendar-visible-calendars";
 
 export function getDateKey(date: Date) {
   const year = date.getFullYear();
@@ -84,13 +94,44 @@ function mapGoogleCalendars(calendars: GoogleCalendarPayload[]): Calendar[] {
     id: `google-${calendar.id}`,
     name: calendar.name,
     color: calendar.color,
+    textColor: calendar.textColor,
     source: "google",
     events: calendar.events.map((event) => ({
       ...event,
-      start: new Date(event.start),
-      end: new Date(event.end),
+      start: parseGoogleEventDate(event.start),
+      end: parseGoogleEventDate(event.end),
     })),
   }));
+}
+
+function parseGoogleEventDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(value);
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function getEventDateRange(event: CalendarEvent) {
+  const start = new Date(event.start.getFullYear(), event.start.getMonth(), event.start.getDate());
+  const end = new Date(event.end.getFullYear(), event.end.getMonth(), event.end.getDate());
+
+  if (event.allDay) {
+    end.setDate(end.getDate() - 1);
+  }
+
+  if (end < start) return [];
+
+  const dates: Date[] = [];
+  const cursor = new Date(start);
+
+  while (cursor <= end) {
+    dates.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return dates;
 }
 
 export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -109,9 +150,43 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   });
   const [calendars, setCalendars] = useState<Calendar[]>([]);
+  const [visibleCalendarIds, setVisibleCalendarIds] = useState<string[]>(() => {
+    const savedIds = localStorage.getItem(VISIBLE_CALENDARS_STORAGE_KEY);
+    if (!savedIds) return [];
+
+    try {
+      return JSON.parse(savedIds) as string[];
+    } catch {
+      return [];
+    }
+  });
   const [googleSyncStatus, setGoogleSyncStatus] = useState<string | null>(null);
   const [sidebarCalendarOpen, setSidebarCalendarOpen] = useState(true);
   const [settingsSidebarOpen, setSettingsSidebarOpen] = useState(true);
+  const calendarEventsByDate = useMemo(() => {
+    const visibleCalendarIdSet = new Set(visibleCalendarIds);
+    const eventsByDate: Record<string, CalendarEventWithColor[]> = {};
+
+    calendars.forEach((calendar) => {
+      if (!visibleCalendarIdSet.has(calendar.id)) return;
+
+      calendar.events.forEach((event) => {
+        getEventDateRange(event).forEach((date) => {
+          const key = getDateKey(date);
+          eventsByDate[key] = [
+            ...(eventsByDate[key] ?? []),
+            {
+              ...event,
+              color: calendar.color,
+              textColor: calendar.textColor,
+            },
+          ];
+        });
+      });
+    });
+
+    return eventsByDate;
+  }, [calendars, visibleCalendarIds]);
 
   useEffect(() => {
     window.electronAPI.getCalendars().then((allData) => {
@@ -151,6 +226,27 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [dayItems]);
 
   useEffect(() => {
+    localStorage.setItem(VISIBLE_CALENDARS_STORAGE_KEY, JSON.stringify(visibleCalendarIds));
+  }, [visibleCalendarIds]);
+
+  useEffect(() => {
+    setVisibleCalendarIds((prev) => {
+      const knownCalendarIds = new Set(calendars.map((calendar) => calendar.id));
+      const visibleKnownIds = prev.filter((calendarId) => knownCalendarIds.has(calendarId));
+      const visibleCalendarIdSet = new Set(visibleKnownIds);
+      const newCalendarIds = calendars
+        .map((calendar) => calendar.id)
+        .filter((calendarId) => !visibleCalendarIdSet.has(calendarId));
+
+      if (visibleKnownIds.length === prev.length && newCalendarIds.length === 0) {
+        return prev;
+      }
+
+      return [...visibleKnownIds, ...newCalendarIds];
+    });
+  }, [calendars]);
+
+  useEffect(() => {
     const d = Array.from({ length: 12 }, (_, i) => new Date(selectedYear.getFullYear(), i, 1))
     setMonths(d)
   }, [selectedYear]);
@@ -175,16 +271,10 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     ]);
   };
 
-  const connectGoogleCalendar = async (clientId?: string, clientSecret?: string) => {
-    const trimmedClientId = clientId?.trim();
-    if (!trimmedClientId) {
-      setGoogleSyncStatus("Paste a Google OAuth desktop client ID first.");
-      return;
-    }
-
+  const connectGoogleCalendar = async () => {
     setGoogleSyncStatus("Connecting to Google...");
     try {
-      const googleCalendars = await window.electronAPI.connectGoogleCalendar(trimmedClientId, clientSecret?.trim());
+      const googleCalendars = await window.electronAPI.connectGoogleCalendar();
       setCalendars((prev) => [
         ...prev.filter((calendar) => calendar.source !== "google"),
         ...mapGoogleCalendars(googleCalendars),
@@ -229,6 +319,20 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     setCalendars((prev) => prev.filter((existingCalendar) => existingCalendar.id !== calendar.id));
+  };
+
+  const setCalendarVisibility = (calendarId: string, visible: boolean) => {
+    setVisibleCalendarIds((prev) => {
+      const calendarIds = new Set(prev);
+
+      if (visible) {
+        calendarIds.add(calendarId);
+      } else {
+        calendarIds.delete(calendarId);
+      }
+
+      return Array.from(calendarIds);
+    });
   };
 
   const holidays = new Holidays('CA');
@@ -279,6 +383,7 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     prevMonth,
     months,
     events,
+    calendarEventsByDate,
     calendars,
     dayItems,
     addDayItem,
@@ -290,6 +395,8 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     connectGoogleCalendar,
     syncGoogleCalendar,
     removeCalendar,
+    visibleCalendarIds,
+    setCalendarVisibility,
     googleSyncStatus,
     settingsSidebarOpen,
     setSettingsSidebarOpen,

@@ -15,6 +15,7 @@ declare global {
     id: string;
     name: string;
     color: string;
+    textColor?: string;
     events: GoogleCalendarEventPayload[];
   }
 
@@ -30,7 +31,7 @@ declare global {
       readFile: (filePath: string) => Promise<string>;
       getCalendars: () => Promise<string[]>;
       getGoogleCalendars: () => Promise<GoogleCalendarPayload[]>;
-      connectGoogleCalendar: (clientId?: string, clientSecret?: string) => Promise<GoogleCalendarPayload[]>;
+      connectGoogleCalendar: () => Promise<GoogleCalendarPayload[]>;
       syncGoogleCalendar: () => Promise<GoogleCalendarPayload[]>;
       removeGoogleCalendar: (calendarId: string) => Promise<GoogleCalendarPayload[]>;
     };

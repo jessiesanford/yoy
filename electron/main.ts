@@ -31,6 +31,12 @@ const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_CALENDAR_API_URL = 'https://www.googleapis.com/calendar/v3';
+const GOOGLE_CALENDAR_CLIENT_ID = '520031747953-922v578d1uivhssjqhatdgf2jaf2m05v.apps.googleusercontent.com';
+const GOOGLE_CLIENT_SECRET_ENV_KEYS = [
+  'GOOGLE_CALENDAR_CLIENT_SECRET',
+  'GOOGLE_CLIENT_SECRET',
+  'TRUE_CALENDAR_GOOGLE_CLIENT_SECRET',
+];
 
 interface GoogleCalendarEvent {
   id: string;
@@ -46,6 +52,7 @@ interface GoogleCalendar {
   id: string;
   name: string;
   color: string;
+  textColor?: string;
   events: GoogleCalendarEvent[];
 }
 
@@ -68,6 +75,7 @@ interface GoogleCalendarListItem {
   id: string;
   summary?: string;
   backgroundColor?: string;
+  foregroundColor?: string;
   deleted?: boolean;
 }
 
@@ -114,6 +122,52 @@ function readGoogleState(): GoogleCalendarState {
 
 function writeGoogleState(state: GoogleCalendarState) {
   fs.writeFileSync(getGoogleStatePath(), JSON.stringify(state, null, 2), 'utf-8');
+}
+
+function readEnvFile(filePath: string) {
+  if (!fs.existsSync(filePath)) return {};
+
+  return fs.readFileSync(filePath, 'utf-8')
+    .split(/\r?\n/)
+    .reduce<Record<string, string>>((env, line) => {
+      const trimmedLine = line.trim();
+      if (!trimmedLine || trimmedLine.startsWith('#')) return env;
+
+      const separatorIndex = trimmedLine.indexOf('=');
+      if (separatorIndex === -1) return env;
+
+      const key = trimmedLine.slice(0, separatorIndex).trim();
+      const rawValue = trimmedLine.slice(separatorIndex + 1).trim();
+      env[key] = rawValue.replace(/^['"]|['"]$/g, '');
+
+      return env;
+    }, {});
+}
+
+function getLocalEnvValue(keys: string[]) {
+  const envFiles = [
+    '.env.dev',
+    '.env.development',
+    '.env.local',
+    '.env',
+  ].map((fileName) => path.join(process.env.APP_ROOT, fileName));
+
+  for (const key of keys) {
+    if (process.env[key]) return process.env[key];
+  }
+
+  for (const envFile of envFiles) {
+    const env = readEnvFile(envFile);
+    for (const key of keys) {
+      if (env[key]) return env[key];
+    }
+  }
+
+  return undefined;
+}
+
+function getGoogleClientSecret() {
+  return getLocalEnvValue(GOOGLE_CLIENT_SECRET_ENV_KEYS);
 }
 
 function base64Url(buffer: Buffer) {
@@ -217,12 +271,15 @@ async function requestGoogleToken(params: URLSearchParams) {
   };
 }
 
-async function connectGoogleCalendar(clientId?: string, clientSecret?: string) {
+async function connectGoogleCalendar() {
   const state = readGoogleState();
-  const configuredClientId = clientId?.trim() || state.clientId;
-  const configuredClientSecret = clientSecret?.trim() || state.clientSecret;
+  const configuredClientId = GOOGLE_CALENDAR_CLIENT_ID;
+  const configuredClientSecret = getGoogleClientSecret() || state.clientSecret;
   if (!configuredClientId) {
     throw new Error('Google Calendar OAuth client ID is required.');
+  }
+  if (!configuredClientSecret) {
+    throw new Error(`Google Calendar OAuth client secret is missing. Add it to .env.dev as ${GOOGLE_CLIENT_SECRET_ENV_KEYS[0]}.`);
   }
 
   const verifier = createCodeVerifier();
@@ -279,6 +336,7 @@ async function getValidGoogleAccessToken() {
   if (!state.clientId || !state.tokens) {
     throw new Error('Google Calendar is not connected.');
   }
+  const configuredClientSecret = getGoogleClientSecret() || state.clientSecret;
 
   if (state.tokens.expiresAt > Date.now() + 60_000) {
     return state.tokens.accessToken;
@@ -294,8 +352,8 @@ async function getValidGoogleAccessToken() {
     grant_type: 'refresh_token',
   });
 
-  if (state.clientSecret) {
-    tokenParams.set('client_secret', state.clientSecret);
+  if (configuredClientSecret) {
+    tokenParams.set('client_secret', configuredClientSecret);
   }
 
   const tokenResponse = await requestGoogleToken(tokenParams);
@@ -421,6 +479,7 @@ async function syncGoogleCalendars() {
       id: item.id,
       name: item.summary || item.id,
       color: item.backgroundColor || previousCalendar?.color || '#2563eb',
+      textColor: item.foregroundColor || previousCalendar?.textColor,
       events: nextEvents,
     });
   }
@@ -466,7 +525,8 @@ function removeGoogleCalendar(calendarId: string) {
 
 function createWindow() {
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    title: 'True Calendar',
+    icon: path.join(process.env.APP_ROOT, 'build', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
@@ -523,7 +583,7 @@ ipcMain.handle("get-calendars", () => {
 });
 
 ipcMain.handle("get-google-calendars", () => readGoogleState().calendars ?? []);
-ipcMain.handle("connect-google-calendar", (_event, clientId?: string, clientSecret?: string) => connectGoogleCalendar(clientId, clientSecret));
+ipcMain.handle("connect-google-calendar", () => connectGoogleCalendar());
 ipcMain.handle("sync-google-calendar", () => syncGoogleCalendars());
 ipcMain.handle("remove-google-calendar", (_event, calendarId: string) => removeGoogleCalendar(calendarId));
 

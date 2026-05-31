@@ -2,9 +2,10 @@ import { getDateKey, useCalendar } from "../../context/CalendarContext.tsx";
 import { cn } from "../../utils/utlis.tsx";
 import { format, isSameDay } from "date-fns";
 import { CalendarDayEventDialog } from "./CalendarDayEventDialog.tsx";
+import type { CalendarDayEntry } from "./CalendarDayEventDialog.tsx";
 
 export function CalendarMonthDay({day, index}: { day: Date, index: number }) {
-  const {selectedMonth, holidays, calendars, dayItems} = useCalendar();
+  const {selectedMonth, holidays, calendarEventsByDate, dayItems} = useCalendar();
 
   const today = new Date();
   const isToday = day.getDate() === today.getDate() && day.getMonth() === today.getMonth() && day.getFullYear() === today.getFullYear();
@@ -15,15 +16,8 @@ export function CalendarMonthDay({day, index}: { day: Date, index: number }) {
     isSameDay(new Date(holiday.date), day)
   );
 
-  const eventsThisDay = calendars.flatMap((calendar) =>
-    calendar.events
-      .filter((event) => isSameDay(event.start, day))
-      .map((event) => ({
-        ...event,
-        color: calendar.color,
-      }))
-  );
-  const dayEntries = [
+  const eventsThisDay = calendarEventsByDate[dateKey] ?? [];
+  const dayEntries: CalendarDayEntry[] = [
     ...holidaysThisDay.map((holiday) => ({
       id: `holiday-${holiday.name}`,
       text: holiday.name,
@@ -33,13 +27,17 @@ export function CalendarMonthDay({day, index}: { day: Date, index: number }) {
     ...eventsThisDay.map((event) => ({
       id: `event-${event.id}`,
       text: event.title,
+      timeText: getEventTimeText(event, day),
+      location: event.location,
       className: "",
-      style: { borderColor: event.color, backgroundColor: event.color },
+      style: { borderColor: event.color, backgroundColor: event.color, color: event.textColor },
     })),
     ...itemsThisDay.map((item) => ({
       id: `item-${item.id}`,
       itemId: item.id,
       text: item.text,
+      timeText: undefined,
+      location: undefined,
       className: "bg-emerald-50 border border-emerald-200 text-emerald-700",
       style: undefined,
     })),
@@ -108,4 +106,25 @@ export function CalendarMonthDay({day, index}: { day: Date, index: number }) {
         </button>
     </CalendarDayEventDialog>
   );
+}
+
+function getEventTimeText(event: { start: Date; end: Date; allDay: boolean }, day: Date) {
+  if (event.allDay) return undefined;
+
+  const startTime = format(event.start, "h:mm a");
+  const endTime = format(event.end, "h:mm a");
+
+  if (isSameDay(event.start, day) && isSameDay(event.end, day)) {
+    return `${startTime}-${endTime}`;
+  }
+
+  if (isSameDay(event.start, day)) {
+    return `Starts ${startTime}`;
+  }
+
+  if (isSameDay(event.end, day)) {
+    return `Ends ${endTime}`;
+  }
+
+  return "Continues";
 }
