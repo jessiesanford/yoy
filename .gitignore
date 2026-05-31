@@ -26,3 +26,5 @@ dist-ssr
 .env
 .env.dev
 /release/
+
+/dist-electron

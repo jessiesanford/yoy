@@ -6,6 +6,7 @@
   "executableName": "true-calendar-setup",
   "private": true,
   "version": "0.0.0",
+  "packageManager": "pnpm@10.12.1",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -19,19 +19,19 @@ It supports local calendar items, `.ics` imports, Canadian holidays, and Google 
 ## Requirements
 
 - Node.js
-- npm
+- pnpm via Corepack
 - A Google Cloud OAuth client if you want Google Calendar sync
 
 ## Install
 
 ```bash
-npm install
+pnpm install
 ```
 
 ## Development
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 This starts the Vite/Electron development app.
@@ -95,7 +95,7 @@ Use a transparent `1024x1024` PNG as the source image when generating platform i
 ## Build
 
 ```bash
-npm run build
+pnpm build
 ```
 
 The build runs TypeScript, Vite, and Electron Builder. Packaged output is written under:
@@ -107,14 +107,19 @@ release/
 ## Quality Checks
 
 ```bash
-npm run lint
+pnpm lint
 ```
 
 ```bash
-./node_modules/.bin/tsc.cmd --noEmit
+pnpm tsc --noEmit
 ```
 
-On non-Windows systems, use the local `tsc` binary for your shell.
+If `pnpm` is not available on your PATH, run the same commands through Corepack:
+
+```bash
+corepack pnpm install
+corepack pnpm dev
+```
 
 ## Project Structure
 
