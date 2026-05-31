@@ -1,6 +1,7 @@
 import { useCalendar } from "../../context/CalendarContext.tsx";
 import { SidebarMonth } from "./SidebarMonth.tsx";
 import { useEffect, useRef } from "react";
+import { cn } from "../../utils/utlis.tsx";
 
 export function SidebarCalendar() {
   const { months, selectedMonth, sidebarCalendarOpen } = useCalendar();
@@ -18,11 +19,9 @@ export function SidebarCalendar() {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry.isIntersecting) {
-          el.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
+        if (!entry.isIntersecting && containerRef.current) {
+          const top = el.getBoundingClientRect().top - containerRef.current.getBoundingClientRect().top + containerRef.current.scrollTop - 5;
+          containerRef.current.scrollTo({ top, behavior: "smooth" });
         }
       },
       {
@@ -39,7 +38,11 @@ export function SidebarCalendar() {
   }, [selectedMonth]);
 
   return (
-    <div className={`flex flex-col gap-2 bg-white text-gray-900 min-w-[240px] shrink-0 h-screen overflow-auto ${sidebarCalendarOpen ? '' : 'hidden'}`} ref={containerRef}>
+    <div className={cn(
+      'flex flex-col gap-2 p-2',
+      'bg-white text-gray-900 min-w-[240px] shrink-0 h-screen overflow-auto', 
+      `${sidebarCalendarOpen ? '' : 'hidden'}`)} 
+    ref={containerRef}>
       {months.map((month) => {
         const key = getKey(month);
         return (

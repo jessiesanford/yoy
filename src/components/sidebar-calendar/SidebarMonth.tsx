@@ -14,7 +14,7 @@ export function SidebarMonth({ month }: { month: Date }) {
   const thisMonthIsCurrentMonth = selectedMonth.getMonth() === month.getMonth() && selectedMonth.getFullYear() === month.getFullYear();
 
   return (
-    <div className={"text-left text-sm pl-2 select-none"}>
+    <div className={"text-left text-sm select-none"}>
       <div className={cn(
         `flex items-center ${thisMonthIsCurrentMonth ? 'bg-gray-700 hover:bg-gray-800' : 'bg-gray-200 hover:bg-gray-300'}`,
         `px-4 py-2 rounded-t-lg cursor-pointer  transition`,
